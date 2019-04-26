@@ -232,24 +232,196 @@ function mod_xrandr.rearrangeworkspaces(max_screen_id)
     end
 end
 
+-- DUPLICATED
+-- TODO: DUPLICATED from mod_xinerama, factor to common lua code
+
+-- Helper functions {{{
+
+local table_maxn = table.maxn or function(tbl)
+   local c=0
+   for k in pairs(tbl) do c=c+1 end
+   return c
+end
+
+local function max(one, other)
+    if one == nil then return other end
+    if other == nil then return one end
+
+    return (one > other) and one or other
+end
+
+-- creates new table, converts {x,y,w,h} representation to {x,y,xmax,ymax}
+local function to_max_representation(screen)
+    return {
+	x = screen.x,
+	y = screen.y,
+	xmax = screen.x + screen.w,
+	ymax = screen.y + screen.h
+    }
+end
+
+-- edits passed table, converts representation {x,y,xmax,ymax} to {x,y,w,h},
+-- and sorts table of indices (entry screen.ids)
+local function fix_representation(screen)
+    screen.w = screen.xmax - screen.x
+    screen.h = screen.ymax - screen.y
+    screen.xmax = nil
+    screen.ymax = nil
+    table.sort(screen.ids)
+end
+
+local function fix_representations(screens)
+    for _k, screen in pairs(screens) do
+	fix_representation(screen)
+    end
+end
+
+-- }}}
+
+function mod_xrandr.close_invisible_screens(max_visible_screen_id)
+    local invisible_screen_id = max_visible_screen_id + 1
+    local invisible_screen = notioncore.find_screen_id(invisible_screen_id)
+    while invisible_screen do
+        -- note that this may not close the screen when it is still populated by
+        -- child windows that cannot be 'rescued'
+        invisible_screen:rqclose();
+
+        invisible_screen_id = invisible_screen_id + 1
+        invisible_screen = notioncore.find_screen_id(invisible_screen_id)
+    end
+
+end
+
+-- find any screens with 0 workspaces and populate them with an empty one
+function mod_xrandr.populate_empty_screens()
+   local screen_id = 0;
+   local screen = notioncore.find_screen_id(screen_id)
+   while (screen ~= nil) do
+       if screen:mx_count() == 0 then
+           notioncore.create_ws(screen)
+       end
+
+       screen_id = screen_id + 1
+       screen = notioncore.find_screen_id(screen_id)
+   end
+end
+
+function mod_xrandr.find_max_screen_id(screens)
+    local max_screen_id = 0
+
+    for screen_index, screen in ipairs(screens) do
+        local screen_id = screen_index - 1
+        max_screen_id = max(max_screen_id, screen_id)
+    end
+
+    return max_screen_id;
+end
+
+--DOC
+-- Perform the setup of notion screens.
+--
+-- The first call sets up the screens of notion, subsequent calls update the
+-- current screens
+--
+-- Returns true on success, false on failure
+--
+-- Example input: {{x=0,y=0,w=1024,h=768},{x=1024,y=0,w=1280,h=1024}}
+function mod_xrandr.setup_screens(screens)
+    -- Update screen dimensions or create new screens
+    for screen_index, screen in ipairs(screens) do
+        local screen_id = screen_index - 1
+        local existing_screen = notioncore.find_screen_id(screen_id)
+
+        if existing_screen ~= nil then
+            mod_xrandr.update_screen(existing_screen, screen)
+        else
+            mod_xrandr.setup_new_screen(screen_id, screen)
+            if package.loaded["mod_sp"] then
+                mod_sp.create_scratchpad(notioncore.find_screen_id(screen_id))
+            end
+        end
+    end
+end
+
+--- {{{ Overlapping screens
+
+-- true if [from1, to1] overlaps [from2, to2]
+local function overlaps (from1, to1, from2, to2)
+    return (from1 < to2) and (from2 < to1)
+end
+
+-- true if scr1 overlaps scr2
+local function screen_overlaps(scr1, scr2)
+    local x_in = overlaps(scr1.x, scr1.xmax, scr2.x, scr2.xmax)
+    local y_in = overlaps(scr1.y, scr1.ymax, scr2.y, scr2.ymax)
+    return x_in and y_in
+end
+
+--DOC
+-- Merges overlapping screens. I.e. it finds set of smallest rectangles,
+-- such that these rectangles do not overlap and such that they contain
+-- all screens.
+--
+-- Example input format: \{\{x=0,y=0,w=1024,h=768\},\{x=0,y=0,w=1280,h=1024\}\}
+function mod_xrandr.merge_overlapping_screens(screens)
+    local ret = {}
+    for _newnum, _newscreen in ipairs(screens) do
+	local newscreen = to_max_representation(_newscreen)
+	newscreen.ids = { _newnum }
+	local overlaps = true
+	local pos
+	while overlaps do
+	    overlaps = false
+	    for prevpos, prevscreen in pairs(ret) do
+		if screen_overlaps(prevscreen, newscreen) then
+		    -- stabilise ordering
+		    if (not pos) or (prevpos < pos) then pos = prevpos end
+		    -- merge with the previous screen
+		    newscreen.x = math.min(newscreen.x, prevscreen.x)
+		    newscreen.y = math.min(newscreen.y, prevscreen.y)
+		    newscreen.xmax = math.max(newscreen.xmax, prevscreen.xmax)
+		    newscreen.ymax = math.max(newscreen.ymax, prevscreen.ymax)
+		    -- merge the indices
+		    for _k, _v in ipairs(prevscreen.ids) do
+			table.insert(newscreen.ids, _v)
+		    end
+
+		    -- delete the merged previous screen
+		    table.remove(ret, prevpos)
+
+		    -- restart from beginning
+		    overlaps = true
+		    break
+		end
+	    end
+	end
+	if not pos then pos = table_maxn(ret)+1 end
+	table.insert(ret, pos, newscreen)
+    end
+    fix_representations(ret)
+    return ret
+end
+
+-- END DUPLICATED
+
 -- refresh xinerama and rearrange workspaces on screen layout updates
 function mod_xrandr.screenlayoutupdated()
     notioncore.profiling_start('notion_xrandrrefresh.prof')
 
-    local screens = mod_xinerama.query_screens()
+    local screens = mod_xrandr.query_screens()
     if screens then
-        local merged_screens = mod_xinerama.merge_overlapping_screens(screens)
-        mod_xinerama.setup_screens(merged_screens)
+        local merged_screens = mod_xrandr.merge_overlapping_screens(screens)
+        mod_xrandr.setup_screens(merged_screens)
     end
 
-    local max_screen_id = mod_xinerama.find_max_screen_id(screens);
+    local max_screen_id = mod_xrandr.find_max_screen_id(screens);
     mod_xrandr.rearrangeworkspaces(max_screen_id)
 
     if screens then
-        mod_xinerama.close_invisible_screens(max_screen_id)
+        mod_xrandr.close_invisible_screens(max_screen_id)
     end
 
-    mod_xinerama.populate_empty_screens()
+    mod_xrandr.populate_empty_screens()
 
     notioncore.screens_updated(notioncore.rootwin())
     notioncore.profiling_stop()

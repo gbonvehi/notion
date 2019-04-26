@@ -269,3 +269,107 @@ ExtlTab mod_xrandr_get_outputs_for_geom(ExtlTab geom)
     return result;
 }
 
+/*EXTL_DOC
+ * Queries the Xrandr extension for screen configuration.
+ *
+ * Example output: \{\{x=0,y=0,w=1024,h=768\},\{x=1024,y=0,w=1280,h=1024\}\}
+ */
+EXTL_SAFE
+EXTL_EXPORT
+ExtlTab mod_xrandr_query_screens()
+{
+    if(hasXrandR){
+        int i, h;
+        XRRScreenResources *res = XRRGetScreenResources(ioncore_g.dpy, ioncore_g.rootwins->dummy_win);
+        ExtlTab result = extl_create_table();
+
+        h = 0;
+        for(i=0; i < res->noutput; i++){
+            XRROutputInfo *output_info = XRRGetOutputInfo(ioncore_g.dpy, res, res->outputs[i]);
+            if(output_info->crtc != None){
+                XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(ioncore_g.dpy, res, output_info->crtc);
+
+                ExtlTab rect = extl_create_table();
+                extl_table_sets_i(rect, "x", crtc_info->x);
+                extl_table_sets_i(rect, "y", crtc_info->y);
+                extl_table_sets_i(rect, "w", (int)crtc_info->width);
+                extl_table_sets_i(rect, "h", (int)crtc_info->height);
+                extl_table_seti_t(result,++h,rect);
+
+                XRRFreeCrtcInfo(crtc_info);
+            }
+            XRRFreeOutputInfo(output_info);
+        }
+
+        return result;
+    }
+    return extl_table_none();
+}
+
+// TODO: Duplicated from xinerama
+/* {{{ Controlling notion screens from lua */
+
+/*
+ * Updates WFitParams based on the lua parameters
+ *
+ * @param screen dimensions (x/y/w/h)
+ */
+static void convert_parameters(ExtlTab screen, WFitParams *fp)
+{
+    WRectangle *g = &(fp->g);
+    extl_table_gets_i(screen,"x",&(g->x));
+    extl_table_gets_i(screen,"y",&(g->y));
+    extl_table_gets_i(screen,"w",&(g->w));
+    extl_table_gets_i(screen,"h",&(g->h));
+    fp->mode=REGION_FIT_EXACT;
+    fp->gravity=ForgetGravity;
+}
+
+/* Set up one new screen
+ * @param screen the screen to update
+ * @param dimensions the new dimensions (x/y/w/h)
+ */
+EXTL_EXPORT
+bool mod_xrandr_update_screen(WScreen *screen, ExtlTab dimensions)
+{
+    WFitParams fp;
+
+    convert_parameters(dimensions, &fp);
+
+#ifdef MOD_XRANDR_DEBUG
+    printf("Updating rectangle #%d: x=%d y=%d width=%u height=%u\n",
+           screen->id, fp.g.x, fp.g.y, fp.g.w, fp.g.h);
+#endif
+
+    region_fitrep((WRegion*)screen, NULL, &fp);
+
+    return TRUE;
+}
+
+/* Set up one new screen
+ * @param screen dimensions (x/y/w/h)
+ * @returns true on success, false on failure
+ */
+EXTL_EXPORT
+bool mod_xrandr_setup_new_screen(int screen_id, ExtlTab screen)
+{
+    WRootWin* rootWin = ioncore_g.rootwins;
+    WScreen* newScreen;
+    WFitParams fp;
+
+    convert_parameters(screen, &fp);
+
+    newScreen = create_screen(rootWin, &fp, screen_id);
+
+    if(newScreen == NULL) {
+        warn(TR("Unable to create Xrandr workspace %d."), screen_id);
+        return FALSE;
+    }
+
+    region_set_manager((WRegion*)newScreen, (WRegion*)rootWin);
+    region_map((WRegion*)newScreen);
+
+    return mod_xrandr_update_screen(newScreen, screen);
+}
+
+/* }}} */

@@ -10,10 +10,6 @@ local mod_xrandr=_G["mod_xrandr"]
 
 assert(mod_xrandr)
 
-if not package.loaded["mod_xinerama"] then
-    dopath("mod_xinerama")
-end
-
 function filter(t, predicate)
      local result = {}
      for k,v in pairs(t) do
@@ -47,3 +43,6 @@ package.loaded["mod_xrandr"]=true
 
 -- Load configuration file
 dopath("cfg_xrandr", true)
+
+-- At this point any workspaces from a saved session haven't been added yet
+mod_xrandr.screenlayoutupdated()
