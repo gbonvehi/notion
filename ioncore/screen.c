@@ -35,6 +35,7 @@
 #include "conf.h"
 #include "activity.h"
 #include "screen-notify.h"
+#include "log.h"
 
 
 WHook *screen_managed_changed_hook=NULL;
@@ -71,6 +72,8 @@ bool screen_init(WScreen *scr, WRootWin *parent, const WFitParams *fp, int id)
         InputOutput,
         DefaultVisual(ioncore_g.dpy, parent->xscr),
         attrflags, &attr);
+
+    LOG(DEBUG, GENERAL, "fp->g.x=%d fp->g.y=%d fp->g.w=%d fp->g.h%d", fp->g.x, fp->g.y, fp->g.w, fp->g.h);
     if(win==None)
         return FALSE;
 

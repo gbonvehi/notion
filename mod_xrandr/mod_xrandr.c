@@ -213,6 +213,7 @@ EXTL_EXPORT
 ExtlTab mod_xrandr_get_all_outputs()
 {
     int i;
+
     XRRScreenResources *res = XRRGetScreenResources(ioncore_g.dpy, ioncore_g.rootwins->dummy_win);
     ExtlTab result = extl_create_table();
 
@@ -220,6 +221,8 @@ ExtlTab mod_xrandr_get_all_outputs()
         XRROutputInfo *output_info = XRRGetOutputInfo(ioncore_g.dpy, res, res->outputs[i]);
         if(output_info->crtc != None){
             XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(ioncore_g.dpy, res, output_info->crtc);
+            LOG(DEBUG, RANDR, "mod_xrandr_get_all_outputs XRRGetCrtcInfo %dx%d %dx%d",
+                    crtc_info->x, crtc_info->y, (int)crtc_info->width, (int)crtc_info->height);
 
             add_output(result, output_info, crtc_info);
 
@@ -251,6 +254,8 @@ ExtlTab mod_xrandr_get_outputs_for_geom(ExtlTab geom)
         XRROutputInfo *output_info = XRRGetOutputInfo(ioncore_g.dpy, res, res->outputs[i]);
         if(output_info->crtc != None){
             XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(ioncore_g.dpy, res, output_info->crtc);
+            LOG(DEBUG, RANDR, "mod_xrandr_get_outputs_for_geom XRRGetCrtcInfo %dx%d %dx%d",
+                    crtc_info->x, crtc_info->y, (int)crtc_info->width, (int)crtc_info->height);
 
             extl_table_gets_i(geom, "x", &x);
             extl_table_gets_i(geom, "y", &y);
@@ -278,16 +283,27 @@ EXTL_SAFE
 EXTL_EXPORT
 ExtlTab mod_xrandr_query_screens()
 {
+    LOG(DEBUG, RANDR, "mod_xrandr_query_screens");
+
     if(hasXrandR){
+        LOG(DEBUG, RANDR, "hasXrandR");
         int i, h;
+
         XRRScreenResources *res = XRRGetScreenResources(ioncore_g.dpy, ioncore_g.rootwins->dummy_win);
         ExtlTab result = extl_create_table();
 
         h = 0;
+        LOG(DEBUG, RANDR, "res->ncrtc: %d", res->ncrtc);
+        LOG(DEBUG, RANDR, "res->noutput: %d", res->noutput);
         for(i=0; i < res->noutput; i++){
+        //for(i=0; i < res->ncrtc; i++){
             XRROutputInfo *output_info = XRRGetOutputInfo(ioncore_g.dpy, res, res->outputs[i]);
             if(output_info->crtc != None){
                 XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(ioncore_g.dpy, res, output_info->crtc);
+                //XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(ioncore_g.dpy, res, res->crtcs[i]);
+
+                LOG(DEBUG, RANDR, "crtc_info %dx%d %dx%d",
+                    crtc_info->x, crtc_info->y, (int)crtc_info->width, (int)crtc_info->height);
 
                 ExtlTab rect = extl_create_table();
                 extl_table_sets_i(rect, "x", crtc_info->x);
@@ -340,6 +356,8 @@ bool mod_xrandr_update_screen(WScreen *screen, ExtlTab dimensions)
     printf("Updating rectangle #%d: x=%d y=%d width=%u height=%u\n",
            screen->id, fp.g.x, fp.g.y, fp.g.w, fp.g.h);
 #endif
+    LOG(DEBUG, RANDR, "Updating rectangle #%d: x=%d y=%d width=%u height=%u\n",
+           screen->id, fp.g.x, fp.g.y, fp.g.w, fp.g.h);
 
     region_fitrep((WRegion*)screen, NULL, &fp);
 

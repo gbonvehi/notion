@@ -16,8 +16,10 @@ end
 
 function setInitialOutputs(ws, outputs)
     if obj_is(ws, "WGroupCW") or is_scratchpad(ws) then
+        ioncore.warn('if' .. tostring(outputs))
         InitialOutputs[ws:name()] = outputs
     elseif obj_is(ws, "WGroupWS") then
+        ioncore.warn('else' .. tostring(outputs))
         WGroupWS.set_initial_outputs(ws, outputs)
     end
 end
@@ -412,13 +414,9 @@ function mod_xrandr.screenlayoutupdated()
     if screens then
         local merged_screens = mod_xrandr.merge_overlapping_screens(screens)
         mod_xrandr.setup_screens(merged_screens)
-    end
-
-    local max_screen_id = mod_xrandr.find_max_screen_id(screens);
-    mod_xrandr.rearrangeworkspaces(max_screen_id)
-
-    if screens then
+        local max_screen_id = mod_xrandr.find_max_screen_id(screens);
         mod_xrandr.close_invisible_screens(max_screen_id)
+        mod_xrandr.rearrangeworkspaces(max_screen_id)
     end
 
     mod_xrandr.populate_empty_screens()

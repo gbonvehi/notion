@@ -185,6 +185,7 @@ static void scan_initial_windows(WRootWin *rootwin)
 
 void rootwin_manage_initial_windows(WRootWin *rootwin)
 {
+    LOG(DEBUG, GENERAL, "init");
     Window *wins=rootwin->tmpwins;
     Window tfor=None;
     int i, nwins=rootwin->tmpnwins;
@@ -287,6 +288,7 @@ static bool rootwin_init(WRootWin *rootwin, int xscr)
     fp.g.x=0; fp.g.y=0;
     fp.g.w=DisplayWidth(dpy, xscr);
     fp.g.h=DisplayHeight(dpy, xscr);
+    LOG(DEBUG, GENERAL, "fp.g.x=%d fp.g.y=%d fp.g.w=%d fp.g.h%d", fp.g.x, fp.g.y, fp.g.w, fp.g.h);
 
     if(!window_do_init((WWindow*)rootwin, NULL, &fp, root, "WRootWin")){
         return FALSE;
