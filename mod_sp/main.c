@@ -24,6 +24,7 @@
 #include <ioncore/names.h>
 #include <ioncore/group.h>
 #include <ioncore/group-ws.h>
+#include <ioncore/log.h>
 
 #include "main.h"
 #include "exports.h"
@@ -107,6 +108,7 @@ static WRegion *create_scratchws(WWindow *parent, const WFitParams *fp,
 
 static WRegion *create(WMPlex *mplex, int flags)
 {
+    LOG(DEBUG, GENERAL, "create");
     WRegion *sp;
     WMPlexAttachParams par=MPLEXATTACHPARAMS_INIT;
 
@@ -128,6 +130,7 @@ static WRegion *create(WMPlex *mplex, int flags)
 
 static bool is_scratchpad(WRegion *reg)
 {
+    LOG(DEBUG, GENERAL, "is_scratchpad");
     char *nm=reg->ni.name;
     int inst_off=reg->ni.inst_off;
 
@@ -148,6 +151,7 @@ EXTL_SAFE
 EXTL_EXPORT
 bool mod_sp_is_scratchpad(WRegion *reg)
 {
+    LOG(DEBUG, GENERAL, "mod_sp_is_scratchpad");
     return is_scratchpad(reg);
 }
 
@@ -157,6 +161,7 @@ bool mod_sp_is_scratchpad(WRegion *reg)
 EXTL_EXPORT
 bool mod_sp_create_scratchpad(WScreen *scr)
 {
+    LOG(DEBUG, GENERAL, "mod_sp_create_scratchpad");
     WMPlexIterTmp tmp;
     WRegion *reg;
 
@@ -175,6 +180,7 @@ bool mod_sp_create_scratchpad(WScreen *scr)
 EXTL_EXPORT
 bool mod_sp_set_shown_on(WMPlex *mplex, const char *how)
 {
+    LOG(DEBUG, GENERAL, "mod_sp_set_shown_on");
     int setpar=libtu_setparam_invert(libtu_string_to_setparam(how));
     WMPlexIterTmp tmp;
     WRegion *reg;
@@ -204,6 +210,7 @@ bool mod_sp_set_shown_on(WMPlex *mplex, const char *how)
 EXTL_EXPORT
 bool mod_sp_set_shown(WFrame *sp, const char *how)
 {
+    LOG(DEBUG, GENERAL, "mod_sp_set_shown");
     if(sp!=NULL){
         int setpar=libtu_setparam_invert(libtu_string_to_setparam(how));
         WMPlex *mplex=OBJ_CAST(REGION_MANAGER(sp), WMPlex);
@@ -223,12 +230,14 @@ bool mod_sp_set_shown(WFrame *sp, const char *how)
 
 void mod_sp_deinit()
 {
+    LOG(DEBUG, GENERAL, "mod_sp_deinit");
     mod_sp_unregister_exports();
 }
 
 
 static void check_and_create()
 {
+    LOG(DEBUG, GENERAL, "check_and_create");
     WMPlexIterTmp tmp;
     WScreen *scr;
     WRegion *reg;
@@ -249,14 +258,18 @@ static void check_and_create()
 
 bool mod_sp_init()
 {
+    LOG(DEBUG, GENERAL, "mod_sp_register_exports");
     if(!mod_sp_register_exports())
         return FALSE;
 
+    LOG(DEBUG, GENERAL, "extl_read_config");
     extl_read_config("cfg_sp", NULL, FALSE);
 
     if(ioncore_g.opmode==IONCORE_OPMODE_INIT){
+        LOG(DEBUG, GENERAL, "hook_add");
         hook_add(ioncore_post_layout_setup_hook, check_and_create);
     }else{
+        LOG(DEBUG, GENERAL, "check_and_create");
         check_and_create();
     }
 

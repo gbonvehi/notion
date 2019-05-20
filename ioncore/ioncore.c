@@ -601,29 +601,39 @@ bool ioncore_startup(const char *display, const char *cfgfile,
     sigaddset(&inittrap, SIGUSR2);
     mainloop_trap_signals(&inittrap);
 
+    LOG(DEBUG, GENERAL, TR("exlt_init"));
     if(!extl_init())
         return FALSE;
 
+    LOG(DEBUG, GENERAL, "register_exports");
     ioncore_register_exports();
 
+    LOG(DEBUG, GENERAL, "ioncore_init_x");
     if(!ioncore_init_x(display, stflags))
         return FALSE;
 
+    LOG(DEBUG, GENERAL, "gr_read_config");
     gr_read_config();
 
+    LOG(DEBUG, GENERAL, "extl_read_config");
     if(!extl_read_config("ioncore_ext", NULL, TRUE))
         return FALSE;
 
+    LOG(DEBUG, GENERAL, "ioncore_read_main_config");
     ioncore_read_main_config(cfgfile);
 
+    LOG(DEBUG, GENERAL, "ioncore_init_layout");
     if(!ioncore_init_layout())
         return FALSE;
 
+    LOG(DEBUG, GENERAL, "ioncore_post_layout_setup_hook");
     hook_call_v(ioncore_post_layout_setup_hook);
 
+    LOG(DEBUG, GENERAL, "rootwin_manage_initial_windows");
     FOR_ALL_ROOTWINS(rootwin)
         rootwin_manage_initial_windows(rootwin);
 
+    LOG(DEBUG, GENERAL, "set_initial_focus");
     set_initial_focus();
 
     return TRUE;

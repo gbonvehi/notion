@@ -20,6 +20,7 @@
 #include "names.h"
 #include "focus.h"
 #include "screen-notify.h"
+#include "log.h"
 
 
 /*{{{ Helper */
@@ -78,8 +79,9 @@ static WRegion *doit_reparent(WRegion *mgr,
         fp=&fp2;
     }
 
+    LOG(DEBUG, GENERAL, TR("Reparenting %s into %s -> mgr %s."), region_name(reg), region_name(par), region_name(mgr));
     if(!region_fitrep(reg, par, fp)){
-        warn(TR("Unable to reparent."));
+        warn(TR("Unable to reparent %s into %s -> mgr %s."), region_name(reg), region_name(par), region_name(mgr));
         return NULL;
     }
 

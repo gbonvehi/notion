@@ -26,7 +26,7 @@ static LogLevel minimumLevel(LogCategory category)
         case VALGRIND:
             return DEBUG;
         default:
-            return INFO;
+            return DEBUG;
     }
 }
 
