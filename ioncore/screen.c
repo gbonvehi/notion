@@ -62,8 +62,17 @@ bool screen_init(WScreen *scr, WRootWin *parent, const WFitParams *fp, int id)
     watch_init(&(scr->infowin_watch));
     watch_init(&(scr->workspace_indicatorwin_watch));
 
-    attr.background_pixmap=ParentRelative;
+    // The problem is that when there's no background, the handling is not defined
+    // If a background_pixel is set, it overrides the pixmap.
+    // If a pixmap is present (pixel not set) evereything works fine.
+    //https://tronche.com/gui/x/xlib/window/attributes/background.html
+    //https://tronche.com/gui/x/xlib/window/attributes/
+    //attrflags=CWBackPixel|CWBackPixmap;
+    //attr.background_pixmap=ParentRelative;
+    //attr.background_pixel=0;
     attrflags=CWBackPixmap;
+    //attr.background_pixmap=ParentRelative;
+    attr.background_pixmap=None;
 
     win=XCreateWindow(ioncore_g.dpy, WROOTWIN_ROOT(parent),
         fp->g.x, fp->g.y, fp->g.w, fp->g.h, 0,

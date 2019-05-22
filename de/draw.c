@@ -600,7 +600,8 @@ void debrush_enable_transparency(DEBrush *brush, GrTransparency mode)
         mode=brush->d->transparency_mode;
 
     if(mode==GR_TRANSPARENCY_YES){
-        attrflags=CWBackPixmap;
+        attrflags=CWBackPixmap|CWBackPixel;
+        attr.background_pixel=PIXEL(brush->d->cgrp.bg);
         attr.background_pixmap=ParentRelative;
     }else{
         attrflags=CWBackPixel;
