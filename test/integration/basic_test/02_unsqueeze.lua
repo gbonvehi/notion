@@ -24,19 +24,25 @@ function table_tostring (tt)
   end
 end
 
-function print_tables(str,t)
-    print(str .. ":")
-    for key, value in ipairs(t) do
-      print("   " .. key .. ": " .. table_tostring(value))
+function return_tables(t)
+    local ret = ""
+    for key, value in pairs(t) do
+      ret = ret .. "   " .. key .. ": " .. table_tostring(value) .. "\n"
     end
+    return ret
 end
 
 -- }}}
 
-
-local currwin = ioncore.current()
-local groupcw = currwin:manager()
-local frame = groupcw:manager()
+currwin = ioncore.current()
+groupcw = currwin:manager()
+groupws = groupcw:manager()
+frame = groupws:manager()
 -- set current frame to a very small size
-frame.rqgeom({w=33})
+newgeom = frame:rqgeom({w=33})
+if newgeom.w == 33 then
+    return 'ok'
+else
+    return 'fail: ' .. tostring(frame) .. ' - ' .. tostring(return_tables(newgeom))
+end
 
