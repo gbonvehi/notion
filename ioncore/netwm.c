@@ -36,8 +36,12 @@ static Atom atom_net_wm_allowed_actions=0;
 static Atom atom_net_wm_moveresize=0;
 static Atom atom_net_wm_window_type=0;
 static Atom atom_net_wm_window_type_dialog=0;
+static Atom atom_net_number_of_desktops=0;
+static Atom atom_net_desktop_viewport=0;
+static Atom atom_net_current_desktop=0;
+static Atom atom_net_wm_desktop=0;
 
-#define N_NETWM 9
+#define N_NETWM 13
 
 static Atom atom_net_supported=0;
 
@@ -65,6 +69,10 @@ void netwm_init()
     atom_net_wm_moveresize=XInternAtom(ioncore_g.dpy, "_NET_WM_MOVERESIZE", False);
     atom_net_wm_window_type=XInternAtom(ioncore_g.dpy, "_NET_WM_WINDOW_TYPE", False);
     atom_net_wm_window_type_dialog=XInternAtom(ioncore_g.dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    atom_net_number_of_desktops=XInternAtom(ioncore_g.dpy, "_NET_NUMBER_OF_DESKTOPS", False);
+    atom_net_desktop_viewport=XInternAtom(ioncore_g.dpy, "_NET_DESKTOP_VIEWPORT", False);
+    atom_net_current_desktop=XInternAtom(ioncore_g.dpy, "_NET_CURRENT_DESKTOP", False);
+    atom_net_wm_desktop=XInternAtom(ioncore_g.dpy, "_NET_WM_DESKTOP", False);
 }
 
 
@@ -82,6 +90,10 @@ void netwm_init_rootwin(WRootWin *rw)
     atoms[6]=atom_net_active_window;
     atoms[7]=atom_net_wm_allowed_actions;
     atoms[8]=atom_net_wm_moveresize;
+    atoms[9]=atom_net_number_of_desktops;
+    atoms[10]=atom_net_desktop_viewport;
+    atoms[11]=atom_net_current_desktop;
+    atoms[12]=atom_net_wm_desktop;
 
     XChangeProperty(ioncore_g.dpy, WROOTWIN_ROOT(rw),
                     atom_net_supporting_wm_check, XA_WINDOW,
@@ -144,6 +156,7 @@ void netwm_update_state(WClientWin *cwin)
 {
     CARD32 data[2];
     int n=0;
+    int current_desktop = 1;
 
     if(REGION_IS_FULLSCREEN(cwin))
         data[n++]=atom_net_wm_state_fullscreen;
@@ -152,7 +165,10 @@ void netwm_update_state(WClientWin *cwin)
 
     XChangeProperty(ioncore_g.dpy, cwin->win, atom_net_wm_state,
                     XA_ATOM, 32, PropModeReplace, (uchar*)data, n);
+    XChangeProperty(ioncore_g.dpy, cwin->win, atom_net_wm_desktop,
+                    XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&(current_desktop), 1);
 }
+
 
 void netwm_update_allowed_actions(WClientWin *cwin)
 {
@@ -350,22 +366,45 @@ EXTL_EXPORT
 void ioncore_screens_updated(WRootWin *rw)
 {
     int current_screen = 0;
+    int current_desktop = 0;
     int n_screens;
+    long ln_screens;
 
     long *virtualroots;
+    long *viewports;
+    long viewport[] = { 0, 0, 1920, 0};
     WScreen *scr;
 
     n_screens = count_screens();
+    ln_screens = (long)n_screens;
     virtualroots = (long*)malloc(n_screens * sizeof(long));
+    viewports = (long*)malloc(n_screens * 2 * sizeof(long));
 
     FOR_ALL_SCREENS(scr){
         virtualroots[current_screen] = region_xwindow((WRegion *)scr);
+        viewports[(current_screen*2)] = ((WRegion *)scr)->geom.x;
+        viewports[(current_screen*2)+1] = ((WRegion *)scr)->geom.y;
         current_screen++;
     }
 
+    /*
     XChangeProperty(ioncore_g.dpy, WROOTWIN_ROOT(rw),
                     atom_net_virtual_roots, XA_WINDOW,
                     32, PropModeReplace, (uchar*)virtualroots, n_screens);
+    */
+
+    XChangeProperty(ioncore_g.dpy, WROOTWIN_ROOT(rw),
+                    atom_net_number_of_desktops, XA_CARDINAL,
+                    8, PropModeReplace, &ln_screens, 1);
+
+    XChangeProperty(ioncore_g.dpy, WROOTWIN_ROOT(rw),
+                    atom_net_desktop_viewport, XA_CARDINAL,
+                    32, PropModeReplace, (unsigned char*)viewports, n_screens * 2);
+
+
+    XChangeProperty(ioncore_g.dpy, WROOTWIN_ROOT(rw),
+                    atom_net_current_desktop, XA_CARDINAL,
+                    32, PropModeReplace, (unsigned char*)&(current_desktop), 1);
 
     free(virtualroots);
 }
